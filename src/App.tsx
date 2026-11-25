@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Menu, Bookmark, LogOut } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { HomeDashboardModule } from './components/HomeDashboardModule';
@@ -14,10 +14,10 @@ import { SavedIdeasDrawer } from './components/SavedIdeasDrawer';
 import { ToastContainer } from './components/Toast';
 import { LegalPages } from './components/LegalPages';
 import {
-  getAccessToken,
   googleSignIn,
   initAuth,
   logout,
+  type AuthUserProfile,
 } from './lib/firebaseAuth';
 import { apiFetch } from './lib/api';
 import type {
@@ -34,6 +34,7 @@ import type {
 
 const SAVED_STORAGE_KEY = 'ygs_saved_ideas_v1';
 const COMPETITORS_STORAGE_KEY = 'ygs_competitors_v1';
+const BOUND_CHANNEL_KEY_PREFIX = 'ygs_bound_channel_v1_';
 
 const MODULE_BREADCRUMBS: Record<ModuleId, string> = {
   home: 'Ana Sayfa · Kanal Özeti',
@@ -67,11 +68,12 @@ export default function App() {
   });
 
   // Google Auth & Connected YouTube Channel State
+  const [authUser, setAuthUser] = useState<AuthUserProfile | null>(null);
   const [channel, setChannel] = useState<ConnectedChannelData | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoadingChannel, setIsLoadingChannel] = useState(false);
   const [channelError, setChannelError] = useState<string | null>(null);
-  const [hasToken, setHasToken] = useState(false);
+  const lastAutoLoadedUidRef = useRef<string | null>(null);
 
   // Module States (100% real data, zero fake defaults)
   const [niche, setNiche] = useState('');
@@ -136,7 +138,7 @@ export default function App() {
   );
 
   const fetchPublicChannel = useCallback(
-    async (query: string) => {
+    async (query: string, uidOverride?: string | null) => {
       const clean = query.trim();
       if (!clean) return;
       setIsLoadingChannel(true);
@@ -149,6 +151,12 @@ export default function App() {
         if (!niche && data.title) {
           setNiche(data.title);
         }
+        try {
+          const storageKey = `${BOUND_CHANNEL_KEY_PREFIX}${uidOverride ?? authUser?.uid ?? 'guest'}`;
+          localStorage.setItem(storageKey, data.customUrl || data.channelId || clean);
+        } catch {
+          // Ignore storage errors
+        }
         showToast(`${data.title} kanalının gerçek YouTube verileri yüklendi!`);
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Kanal verileri alınamadı.';
@@ -158,27 +166,8 @@ export default function App() {
         setIsLoadingChannel(false);
       }
     },
-    [niche, showToast]
+    [authUser?.uid, niche, showToast]
   );
-
-  const fetchMyChannel = useCallback(async () => {
-    if (!getAccessToken()) return;
-    setIsLoadingChannel(true);
-    setChannelError(null);
-    try {
-      const data = await apiFetch<ConnectedChannelData>('/api/youtube/my-channel');
-      setChannel(data);
-      if (!niche && data.title) {
-        setNiche(data.title);
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Kanal verileri alınamadı.';
-      setChannelError(msg);
-      showToast(msg, 'error');
-    } finally {
-      setIsLoadingChannel(false);
-    }
-  }, [niche, showToast]);
 
   useEffect(() => {
     apiFetch<ApiStatusResponse>('/api/status')
@@ -188,17 +177,27 @@ export default function App() {
       });
 
     const unsub = initAuth(
-      () => {
-        setHasToken(true);
-        fetchMyChannel();
+      (profile) => {
+        setAuthUser(profile);
+        if (lastAutoLoadedUidRef.current === profile.uid) return;
+        lastAutoLoadedUidRef.current = profile.uid;
+        try {
+          const savedQuery = localStorage.getItem(`${BOUND_CHANNEL_KEY_PREFIX}${profile.uid}`);
+          if (savedQuery) {
+            fetchPublicChannel(savedQuery, profile.uid);
+          }
+        } catch {
+          // Ignore storage errors
+        }
       },
       () => {
-        setHasToken(false);
-        setChannel((prev) => (prev?.connectionMode === 'public' ? prev : null));
+        lastAutoLoadedUidRef.current = null;
+        setAuthUser(null);
       }
     );
     return () => unsub();
-  }, [fetchMyChannel]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const onPopState = () => {
@@ -221,10 +220,20 @@ export default function App() {
     setIsLoggingIn(true);
     setChannelError(null);
     try {
-      await googleSignIn();
-      setHasToken(true);
-      await fetchMyChannel();
-      showToast('Google hesabınız ve YouTube kanalınız başarıyla bağlandı!');
+      const profile = await googleSignIn();
+      setAuthUser(profile);
+      let savedQuery: string | null = null;
+      try {
+        savedQuery = localStorage.getItem(`${BOUND_CHANNEL_KEY_PREFIX}${profile.uid}`);
+      } catch {
+        savedQuery = null;
+      }
+      if (savedQuery && lastAutoLoadedUidRef.current !== profile.uid) {
+        lastAutoLoadedUidRef.current = profile.uid;
+        await fetchPublicChannel(savedQuery, profile.uid);
+      } else if (!savedQuery) {
+        showToast('Google hesabınızla giriş yapıldı! Şimdi kanal @handle adresinizi bağlayabilirsiniz.');
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Google girişi başarısız oldu.';
       setChannelError(msg);
@@ -235,21 +244,28 @@ export default function App() {
   };
 
   const handleRefreshChannel = async () => {
-    if (channel?.connectionMode === 'public') {
-      await fetchPublicChannel(channel.customUrl || channel.channelId || channel.title);
-    } else {
-      await fetchMyChannel();
+    if (!channel) return;
+    await fetchPublicChannel(channel.customUrl || channel.channelId || channel.title);
+  };
+
+  const handleSwitchChannel = () => {
+    try {
+      localStorage.removeItem(`${BOUND_CHANNEL_KEY_PREFIX}${authUser?.uid ?? 'guest'}`);
+    } catch {
+      // Ignore storage errors
     }
+    setChannel(null);
+    setChannelError(null);
   };
 
   const handleLogout = async () => {
-    if (hasToken) {
+    if (authUser) {
       await logout();
     }
-    setHasToken(false);
+    setAuthUser(null);
     setChannel(null);
     setChannelError(null);
-    showToast('Kanal bağlantısı kapatıldı.', 'info');
+    showToast('Oturum kapatıldı.', 'info');
   };
 
   useEffect(() => {
@@ -306,7 +322,7 @@ export default function App() {
     setAutoTriggerContentKey((k) => k + 1);
   };
 
-  const hasYoutubeAccess = hasToken || apiStatus.youtubeReady;
+  const hasYoutubeAccess = apiStatus.youtubeReady;
 
   if (legalPage) {
     return (
@@ -325,6 +341,7 @@ export default function App() {
         onSelectModule={setActiveModule}
         savedCount={savedIdeas.length}
         onOpenSaved={() => setSavedDrawerOpen(true)}
+        authUser={authUser}
         channel={channel}
         isLoggingIn={isLoggingIn}
         onGoogleLogin={handleGoogleLogin}
@@ -411,6 +428,29 @@ export default function App() {
                   <LogOut className="h-3.5 w-3.5" />
                 </button>
               </div>
+            ) : authUser ? (
+              <div className="flex items-center gap-2 rounded-lg border border-white/[0.08] bg-[#161922] px-2.5 py-1.5">
+                {authUser.photoURL && (
+                  <img
+                    src={authUser.photoURL}
+                    alt={authUser.displayName || 'Kullanıcı'}
+                    referrerPolicy="no-referrer"
+                    className="h-6 w-6 rounded-full object-cover"
+                  />
+                )}
+                <span className="hidden sm:inline text-xs font-semibold text-white max-w-[140px] truncate">
+                  {authUser.displayName || authUser.email}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  aria-label="Çıkış yap"
+                  title="Çıkış yap"
+                  className="text-slate-400 hover:text-rose-400 cursor-pointer"
+                >
+                  <LogOut className="h-3.5 w-3.5" />
+                </button>
+              </div>
             ) : (
               <GoogleSignInButton
                 onClick={handleGoogleLogin}
@@ -425,6 +465,7 @@ export default function App() {
         <main className="mx-auto max-w-[1320px] p-4 sm:p-6 lg:p-8">
           {activeModule === 'home' && (
             <HomeDashboardModule
+              authUser={authUser}
               channel={channel}
               isLoadingChannel={isLoadingChannel}
               channelError={channelError}
@@ -432,7 +473,7 @@ export default function App() {
               onGoogleLogin={handleGoogleLogin}
               onConnectPublicChannel={fetchPublicChannel}
               onRefreshChannel={handleRefreshChannel}
-              onDisconnectChannel={handleLogout}
+              onDisconnectChannel={handleSwitchChannel}
               onNavigate={setActiveModule}
               onOptimizeVideo={handleRouteToOptimize}
               onOpenLegal={(page) => navigateLegal(page)}

@@ -13,6 +13,7 @@ import {
   X,
 } from 'lucide-react';
 import type { ConnectedChannelData, ModuleId } from '../types';
+import type { AuthUserProfile } from '../lib/firebaseAuth';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface SidebarProps {
@@ -20,6 +21,7 @@ interface SidebarProps {
   onSelectModule: (id: ModuleId) => void;
   savedCount: number;
   onOpenSaved: () => void;
+  authUser: AuthUserProfile | null;
   channel: ConnectedChannelData | null;
   isLoggingIn: boolean;
   onGoogleLogin: () => void;
@@ -49,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectModule,
   savedCount,
   onOpenSaved,
+  authUser,
   channel,
   isLoggingIn,
   onGoogleLogin,
@@ -169,12 +172,42 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <LogOut className="h-3.5 w-3.5" />
             </button>
           </div>
+        ) : authUser ? (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#161B26] p-2.5">
+            <div className="flex items-center gap-2.5 min-w-0">
+              {authUser.photoURL && (
+                <img
+                  src={authUser.photoURL}
+                  alt={authUser.displayName || 'Kullanıcı'}
+                  referrerPolicy="no-referrer"
+                  className="h-8 w-8 rounded-full object-cover shrink-0"
+                />
+              )}
+              <div className="min-w-0">
+                <p className="truncate text-xs font-semibold text-white">
+                  {authUser.displayName || 'Google Hesabı'}
+                </p>
+                <p className="truncate text-[11px] text-slate-400">
+                  {authUser.email || 'Oturum açık'}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onLogout}
+              title="Çıkış yap"
+              aria-label="Çıkış yap"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-400 hover:bg-white/[0.06] hover:text-rose-400 shrink-0 cursor-pointer"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : (
           <div className="flex justify-center">
             <GoogleSignInButton
               onClick={onGoogleLogin}
               loading={isLoggingIn}
-              label="Kanalını Bağla"
+              label="Google ile Giriş Yap"
               compact
             />
           </div>

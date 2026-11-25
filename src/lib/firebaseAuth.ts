@@ -8,11 +8,6 @@ import {
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
-export const YOUTUBE_SCOPES = [
-  'https://www.googleapis.com/auth/youtube.readonly',
-  'https://www.googleapis.com/auth/yt-analytics.readonly',
-];
-
 const resolvedFirebaseConfig = {
   ...firebaseConfig,
   ...(import.meta.env.VITE_FIREBASE_API_KEY
@@ -38,52 +33,46 @@ const resolvedFirebaseConfig = {
 const app = initializeApp(resolvedFirebaseConfig);
 const auth = getAuth(app);
 
+// Standard Google Sign-In without sensitive YouTube OAuth scopes so Google never
+// blocks users with an "unverified app / unsafe" warning screen.
 const provider = new GoogleAuthProvider();
-for (const scope of YOUTUBE_SCOPES) {
-  provider.addScope(scope);
-}
 provider.setCustomParameters({
-  prompt: 'consent select_account',
-  include_granted_scopes: 'true',
+  prompt: 'select_account',
 });
 
-let isSigningIn = false;
-let cachedAccessToken: string | null = null;
+export interface AuthUserProfile {
+  uid: string;
+  displayName: string | null;
+  email: string | null;
+  photoURL: string | null;
+}
+
+function toProfile(user: User): AuthUserProfile {
+  return {
+    uid: user.uid,
+    displayName: user.displayName,
+    email: user.email,
+    photoURL: user.photoURL,
+  };
+}
 
 export const initAuth = (
-  onAuthSuccess?: (user: User, token: string) => void,
-  onAuthRequired?: (user: User | null) => void
+  onSignedIn: (profile: AuthUserProfile) => void,
+  onSignedOut: () => void
 ) => {
   return onAuthStateChanged(auth, (user: User | null) => {
     if (user) {
-      if (cachedAccessToken) {
-        onAuthSuccess?.(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        onAuthRequired?.(user);
-      }
+      onSignedIn(toProfile(user));
     } else {
-      cachedAccessToken = null;
-      onAuthRequired?.(null);
+      onSignedOut();
     }
   });
 };
 
-export const googleSignIn = async (): Promise<{
-  user: User;
-  accessToken: string;
-}> => {
-  isSigningIn = true;
+export const googleSignIn = async (): Promise<AuthUserProfile> => {
   try {
     const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error(
-        'Google oturumundan YouTube erişim jetonu alınamadı. Lütfen izinleri onaylayarak tekrar deneyin.'
-      );
-    }
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    return toProfile(result.user);
   } catch (err: unknown) {
     const code =
       typeof err === 'object' && err !== null && 'code' in err
@@ -91,7 +80,7 @@ export const googleSignIn = async (): Promise<{
         : '';
     if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
       throw new Error(
-        'Firebase Authentication henüz etkinleştirilmemiş. Firebase Console → Authentication → Sign-in method bölümünden "Get started" deyip Google girişini açın.'
+        'Firebase Authentication henüz etkinleştirilmemiş. Firebase Console → Authentication → Sign-in method bölümünden Google girişini açın.'
       );
     }
     if (code === 'auth/unauthorized-domain') {
@@ -101,7 +90,7 @@ export const googleSignIn = async (): Promise<{
     }
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
       throw new Error(
-        'Google giriş penceresi tamamlanmadan kapatıldı. Tekrar deneyebilir veya kanal @handle adınızı yazarak bağlanabilirsiniz.'
+        'Google giriş penceresi tamamlanmadan kapatıldı. Tekrar deneyebilirsiniz.'
       );
     }
     if (code === 'auth/popup-blocked') {
@@ -110,16 +99,13 @@ export const googleSignIn = async (): Promise<{
       );
     }
     throw err;
-  } finally {
-    isSigningIn = false;
   }
 };
 
 export const getAccessToken = (): string | null => {
-  return cachedAccessToken;
+  return null;
 };
 
 export const logout = async (): Promise<void> => {
-  cachedAccessToken = null;
   await auth.signOut();
 };

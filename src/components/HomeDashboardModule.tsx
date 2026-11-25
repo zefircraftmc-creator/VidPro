@@ -10,11 +10,15 @@ import {
   AlertCircle,
   Search,
   LogOut,
+  CheckCircle2,
+  BarChart3,
 } from 'lucide-react';
 import type { ConnectedChannelData, ModuleId } from '../types';
+import type { AuthUserProfile } from '../lib/firebaseAuth';
 import { GoogleSignInButton } from './GoogleSignInButton';
 
 interface HomeDashboardModuleProps {
+  authUser: AuthUserProfile | null;
   channel: ConnectedChannelData | null;
   isLoadingChannel: boolean;
   channelError: string | null;
@@ -29,6 +33,7 @@ interface HomeDashboardModuleProps {
 }
 
 export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
+  authUser,
   channel,
   isLoadingChannel,
   channelError,
@@ -42,6 +47,7 @@ export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
   onOpenLegal,
 }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [hoveredVideoIdx, setHoveredVideoIdx] = useState<number | null>(null);
   const [channelQuery, setChannelQuery] = useState('');
 
   const handlePublicSubmit = (e: React.FormEvent) => {
@@ -61,16 +67,40 @@ export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
                 YouTube Kanalını Büyütmeye Başla
               </h2>
               <p className="text-sm leading-relaxed text-slate-300">
-                Kanalını bağlayarak abone ivmeni, son 28 günlük izlenme grafiğini ve videolarının SEO performansını tek panelden takip et.
+                Google hesabınla oturum aç ve kanalının @kullanıcıadını bağlayarak abone ivmeni, son videolarının izlenme performansını ve SEO fırsatlarını tek panelden yönet.
               </p>
 
-              <div className="pt-1 flex flex-wrap items-center gap-3">
-                <GoogleSignInButton
-                  onClick={onGoogleLogin}
-                  loading={isLoggingIn || isLoadingChannel}
-                  label="Google ile Giriş Yap ve Kanalı Bağla"
-                />
-              </div>
+              {authUser ? (
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-[#10B981]/30 bg-[#10B981]/10 p-3.5">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {authUser.photoURL && (
+                      <img
+                        src={authUser.photoURL}
+                        alt={authUser.displayName || 'Kullanıcı'}
+                        referrerPolicy="no-referrer"
+                        className="h-9 w-9 rounded-full object-cover shrink-0 border border-white/15"
+                      />
+                    )}
+                    <div className="min-w-0">
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-white truncate">
+                        <CheckCircle2 className="h-3.5 w-3.5 text-[#10B981] shrink-0" />
+                        <span className="truncate">{authUser.displayName || 'Google Hesabı'}</span>
+                      </p>
+                      <p className="truncate text-[11px] text-slate-300">
+                        {authUser.email} · Sağdan kanal @handle adresini ekle
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="pt-1 flex flex-wrap items-center gap-3">
+                  <GoogleSignInButton
+                    onClick={onGoogleLogin}
+                    loading={isLoggingIn || isLoadingChannel}
+                    label="Google ile Giriş Yap"
+                  />
+                </div>
+              )}
 
               {channelError && (
                 <div className="flex items-start gap-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3.5 text-xs leading-relaxed text-rose-200">
@@ -310,95 +340,169 @@ export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
 
         <div className="rounded-xl border border-white/[0.08] bg-[#161922] p-5">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span>28 Gün İzlenme Süresi</span>
-            <Clock className="h-4 w-4 text-[#10B981]" />
+            <span>
+              {channel.analytics28d.available ? '28 Gün İzlenme Süresi' : 'Son Videolar Ort. İzlenme'}
+            </span>
+            {channel.analytics28d.available ? (
+              <Clock className="h-4 w-4 text-[#10B981]" />
+            ) : (
+              <BarChart3 className="h-4 w-4 text-[#10B981]" />
+            )}
           </div>
           <p className="mt-2 font-mono-tabular text-2xl font-bold text-white">
             {channel.analytics28d.available
               ? `${channel.analytics28d.watchHours.toLocaleString('tr-TR')} saat`
-              : '—'}
+              : channel.recentVideos.length > 0
+                ? Math.round(
+                    channel.recentVideos.reduce((acc, v) => acc + v.viewCount, 0) /
+                      channel.recentVideos.length
+                  ).toLocaleString('tr-TR')
+                : '0'}
           </p>
           <p className="mt-1 font-mono-tabular text-xs text-slate-400">
             {channel.analytics28d.available
               ? `Ort. süre: ${Math.floor(channel.analytics28d.avgViewDurationSec / 60)}dk ${
                   channel.analytics28d.avgViewDurationSec % 60
                 }sn`
-              : 'YouTube Analytics gerektirir'}
+              : `Son ${channel.recentVideos.length} video ortalaması`}
           </p>
         </div>
       </section>
 
       <section className="rounded-xl border border-white/[0.08] bg-[#161922] p-5 sm:p-6">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="font-display text-base font-bold text-white">
-              Son 28 Günlük İzlenme Performansı
-            </h3>
-            <p className="text-xs text-slate-400 mt-0.5">YouTube Analytics günlük dağılımı</p>
-          </div>
-          {activePoint && (
-            <div className="rounded-lg border border-white/[0.08] bg-[#0B0F19] px-3 py-1.5 text-right">
-              <p className="text-[11px] font-mono-tabular text-slate-400">{activePoint.date}</p>
-              <p className="font-mono-tabular text-xs font-bold text-white">
-                {activePoint.views.toLocaleString('tr-TR')} izlenme · +
-                {activePoint.subscribersGained} / -{activePoint.subscribersLost} abone
-              </p>
-            </div>
-          )}
-        </div>
-
         {channel.analytics28d.available && points.length > 0 ? (
-          <div className="mt-5 w-full overflow-hidden">
-            <svg
-              viewBox={`0 0 ${chartW} ${chartH}`}
-              className="h-[200px] w-full"
-              role="img"
-              aria-label="28 Günlük YouTube Analytics Grafiği"
-            >
-              <defs>
-                <linearGradient id="ytRealArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.35" />
-                  <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <polygon points={areaStr} fill="url(#ytRealArea)" />
-              <polyline
-                fill="none"
-                stroke="#3B82F6"
-                strokeWidth="2.5"
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                points={polylineStr}
-              />
-              {points.map((pt, i) => (
-                <circle
-                  key={pt.date}
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={hoveredIdx === i ? 6 : 3.5}
-                  fill={hoveredIdx === i ? '#10B981' : '#3B82F6'}
-                  stroke="#0B0F19"
-                  strokeWidth="1.5"
-                  className="cursor-pointer"
-                  onMouseEnter={() => setHoveredIdx(i)}
+          <>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h3 className="font-display text-base font-bold text-white">
+                  Son 28 Günlük İzlenme Performansı
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">YouTube Analytics günlük dağılımı</p>
+              </div>
+              {activePoint && (
+                <div className="rounded-lg border border-white/[0.08] bg-[#0B0F19] px-3 py-1.5 text-right">
+                  <p className="text-[11px] font-mono-tabular text-slate-400">{activePoint.date}</p>
+                  <p className="font-mono-tabular text-xs font-bold text-white">
+                    {activePoint.views.toLocaleString('tr-TR')} izlenme · +
+                    {activePoint.subscribersGained} / -{activePoint.subscribersLost} abone
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-5 w-full overflow-hidden">
+              <svg
+                viewBox={`0 0 ${chartW} ${chartH}`}
+                className="h-[200px] w-full"
+                role="img"
+                aria-label="28 Günlük YouTube Analytics Grafiği"
+              >
+                <defs>
+                  <linearGradient id="ytRealArea" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3B82F6" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                <polygon points={areaStr} fill="url(#ytRealArea)" />
+                <polyline
+                  fill="none"
+                  stroke="#3B82F6"
+                  strokeWidth="2.5"
+                  strokeLinejoin="round"
+                  strokeLinecap="round"
+                  points={polylineStr}
                 />
-              ))}
-            </svg>
-          </div>
+                {points.map((pt, i) => (
+                  <circle
+                    key={pt.date}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={hoveredIdx === i ? 6 : 3.5}
+                    fill={hoveredIdx === i ? '#10B981' : '#3B82F6'}
+                    stroke="#0B0F19"
+                    strokeWidth="1.5"
+                    className="cursor-pointer"
+                    onMouseEnter={() => setHoveredIdx(i)}
+                  />
+                ))}
+              </svg>
+            </div>
+          </>
         ) : (
-          <div className="mt-4 flex flex-col gap-3 rounded-lg border border-white/[0.06] bg-[#0B0F19] p-4 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-slate-400">
-              Günlük izlenme ve abone grafiği için Google hesabınızla YouTube Analytics izni verin.
-            </p>
-            {channel.connectionMode === 'public' && (
-              <GoogleSignInButton
-                onClick={onGoogleLogin}
-                loading={isLoggingIn}
-                label="Google ile Bağlan"
-                compact
-              />
-            )}
-          </div>
+          (() => {
+            const chartVideos = [...channel.recentVideos].reverse();
+            const maxVidViews = Math.max(...chartVideos.map((v) => v.viewCount), 1);
+            const activeVid =
+              chartVideos.length > 0
+                ? hoveredVideoIdx !== null && chartVideos[hoveredVideoIdx]
+                  ? chartVideos[hoveredVideoIdx]
+                  : chartVideos[chartVideos.length - 1]
+                : null;
+
+            return (
+              <>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h3 className="font-display text-base font-bold text-white">
+                      Son Videolar İzlenme Grafiği
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Son yayınlanan {chartVideos.length} videonun gerçek izlenme dağılımı
+                    </p>
+                  </div>
+                  {activeVid && (
+                    <div className="rounded-lg border border-white/[0.08] bg-[#0B0F19] px-3 py-1.5 text-right max-w-xs">
+                      <p className="truncate text-[11px] text-slate-400">{activeVid.title}</p>
+                      <p className="font-mono-tabular text-xs font-bold text-white">
+                        {activeVid.viewCount.toLocaleString('tr-TR')} izlenme ·{' '}
+                        {activeVid.likeCount.toLocaleString('tr-TR')} beğeni
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {chartVideos.length > 0 ? (
+                  <div className="mt-5 flex h-[170px] items-end gap-2 sm:gap-3 pt-4">
+                    {chartVideos.map((vid, idx) => {
+                      const pct = Math.max(8, Math.round((vid.viewCount / maxVidViews) * 100));
+                      const isActive =
+                        hoveredVideoIdx !== null
+                          ? hoveredVideoIdx === idx
+                          : idx === chartVideos.length - 1;
+                      return (
+                        <button
+                          key={vid.id}
+                          type="button"
+                          onMouseEnter={() => setHoveredVideoIdx(idx)}
+                          onClick={() => onOptimizeVideo(vid.title)}
+                          title={`${vid.title} (${vid.viewCount.toLocaleString('tr-TR')} izlenme)`}
+                          className="group flex flex-1 flex-col items-center gap-2 h-full justify-end cursor-pointer"
+                        >
+                          <div className="w-full flex-1 flex items-end">
+                            <div
+                              style={{ height: `${pct}%` }}
+                              className={`w-full rounded-t-md transition-colors ${
+                                isActive
+                                  ? 'bg-gradient-to-t from-[#2563EB] to-[#38BDF8]'
+                                  : 'bg-[#2563EB]/35 group-hover:bg-[#3B82F6]/70'
+                              }`}
+                            />
+                          </div>
+                          <span className="font-mono-tabular text-[10px] text-slate-500 truncate max-w-full">
+                            {vid.publishedAt.slice(5, 10)}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-xs text-slate-400">
+                    Grafik için kanalda henüz herkese açık video bulunmuyor.
+                  </p>
+                )}
+              </>
+            );
+          })()
         )}
       </section>
 

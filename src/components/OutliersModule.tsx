@@ -11,7 +11,6 @@ import {
   Play,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
-import { GoogleSignInButton } from './GoogleSignInButton';
 import type { OutlierVideo } from '../types';
 
 interface OutliersModuleProps {
@@ -213,27 +212,29 @@ export const OutliersModule: React.FC<OutliersModuleProps> = ({
       </section>
 
       {errorMsg && (
-        <div className="flex flex-col gap-3 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-start gap-2.5">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
-            <p>{errorMsg}</p>
-          </div>
-          {!hasYoutubeAccess && (
-            <GoogleSignInButton onClick={onGoogleLogin} loading={isLoggingIn} compact />
-          )}
+        <div className="flex items-start gap-2.5 rounded-xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+          <p>{errorMsg}</p>
         </div>
       )}
 
-      {!hasYoutubeAccess && outliers.length === 0 && !errorMsg && (
-        <div className="rounded-xl border border-white/[0.08] bg-[#161922] p-10 text-center space-y-4">
+      {!hasYoutubeAccess && outliers.length === 0 && !errorMsg && !isLoading && (
+        <div className="rounded-xl border border-white/[0.08] bg-[#161922] p-10 text-center space-y-3">
           <p className="text-sm font-semibold text-white">
-            Viral videoları keşfetmek için Google ile giriş yapın
+            Viral videoları listelemek için Trendleri Getir butonuna basın
           </p>
           <p className="text-xs text-slate-400">
-            Bağlantı sağlandığında Türkiye trendleri ve aradığınız nişlerde öne çıkan videolar listelenir.
+            Türkiye trendleri ve aradığınız nişlerde öne çıkan videolar saatlik VPH hızlarıyla birlikte listelenir.
           </p>
-          <div className="flex justify-center">
-            <GoogleSignInButton onClick={onGoogleLogin} loading={isLoggingIn} />
+          <div className="pt-1 flex justify-center">
+            <button
+              type="button"
+              onClick={() => fetchLiveOutliers(searchQuery)}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#3B82F6] px-5 text-xs font-semibold text-white hover:bg-blue-500 cursor-pointer"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              <span>Trendleri Getir</span>
+            </button>
           </div>
         </div>
       )}
