@@ -68,11 +68,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
             }}
             className="flex items-center gap-2.5 cursor-pointer"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#06B6D4] shadow-sm shadow-blue-500/20">
-              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
-                <path d="M5 4.5v15l14-7.5-14-7.5z" />
-              </svg>
-            </span>
+            <img
+              src="/src/assets/images/vidpro_logo_1795622870800.jpg"
+              alt="VidPro Logo"
+              className="h-8 w-8 rounded-lg object-cover border border-white/10 shadow-sm"
+            />
             <span className="font-display text-lg font-extrabold tracking-tight text-white">
               Vid<span className="text-[#38BDF8]">Pro</span>
             </span>
