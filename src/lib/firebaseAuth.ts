@@ -89,6 +89,16 @@ export const googleSignIn = async (): Promise<{
       typeof err === 'object' && err !== null && 'code' in err
         ? String((err as { code?: unknown }).code)
         : '';
+    if (code === 'auth/configuration-not-found' || code === 'auth/operation-not-allowed') {
+      throw new Error(
+        'Firebase Authentication henüz etkinleştirilmemiş. Firebase Console → Authentication → Sign-in method bölümünden "Get started" deyip Google girişini açın.'
+      );
+    }
+    if (code === 'auth/unauthorized-domain') {
+      throw new Error(
+        'Bu alan adı Firebase yetkilendirilmiş domainler listesinde değil. Firebase Console → Authentication → Settings → Authorized domains kısmına sitenizin adresini ekleyin.'
+      );
+    }
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
       throw new Error(
         'Google giriş penceresi tamamlanmadan kapatıldı. Tekrar deneyebilir veya kanal @handle adınızı yazarak bağlanabilirsiniz.'
