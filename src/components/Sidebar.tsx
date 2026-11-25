@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Home,
+  BarChart2,
   Sliders,
   MessageSquare,
   KeyRound,
@@ -37,13 +38,14 @@ const NAV_ITEMS: Array<{
   icon: React.FC<{ className?: string }>;
 }> = [
   { id: 'home', label: 'Ana Sayfa', icon: Home },
+  { id: 'video-audit', label: 'Video Analizi', icon: BarChart2 },
   { id: 'daily-ideas', label: 'Günlük Fikirler', icon: Flame },
   { id: 'keywords', label: 'Anahtar Kelimeler', icon: KeyRound },
   { id: 'optimize', label: 'Optimize Et', icon: Sliders },
   { id: 'outliers', label: 'Outliers', icon: TrendingUp },
   { id: 'competitors', label: 'Rakipler', icon: Users },
-  { id: 'coach', label: 'AI Koç', icon: MessageSquare },
   { id: 'thumbnails', label: 'Thumbnail Önizleme', icon: ImageIcon },
+  { id: 'coach', label: 'AI Koç', icon: MessageSquare },
 ];
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -76,9 +78,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <img
               src="/src/assets/images/vidpro_logo_1795622870800.jpg"
               alt="VidPro Logo"
-              className="h-8 w-8 rounded-lg object-cover border border-white/10 shadow-sm"
+              className="h-8 w-8 rounded-lg object-cover border border-white/10"
             />
-            <span className="font-display text-lg font-extrabold tracking-tight text-white">
+            <span className="font-display text-lg font-extrabold tracking-tight text-white whitespace-nowrap">
               Vid<span className="text-[#38BDF8]">Pro</span>
             </span>
           </button>
@@ -104,15 +106,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectModule(item.id);
                   onCloseMobile();
                 }}
-                className={`relative flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left text-[13.5px] transition-colors cursor-pointer ${
+                className={`flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left text-[13.5px] transition-colors cursor-pointer whitespace-nowrap ${
                   active
-                    ? 'bg-[#2563EB]/15 text-white font-semibold'
+                    ? 'bg-[#2563EB]/20 text-white font-semibold'
                     : 'text-slate-400 font-medium hover:bg-white/[0.04] hover:text-slate-100'
                 }`}
               >
-                {active && (
-                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-[#38BDF8]" />
-                )}
                 <Icon
                   className={`h-4 w-4 shrink-0 ${
                     active ? 'text-[#38BDF8]' : 'text-slate-400'
@@ -133,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onOpenSaved();
             onCloseMobile();
           }}
-          className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#161B26] px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white cursor-pointer"
+          className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#131722] px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white cursor-pointer"
         >
           <span className="flex items-center gap-2">
             <Bookmark className="h-3.5 w-3.5 text-[#38BDF8]" />
@@ -143,7 +142,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         {channel ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#161B26] p-2.5">
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#131722] p-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               {channel.thumbnailUrl && (
                 <img
@@ -173,7 +172,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </button>
           </div>
         ) : authUser ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#161B26] p-2.5">
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#131722] p-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               {authUser.photoURL && (
                 <img

@@ -9,16 +9,16 @@ import {
   LayoutGrid,
   Table as TableIcon,
   Play,
+  BarChart2,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import type { OutlierVideo } from '../types';
 
 interface OutliersModuleProps {
   hasYoutubeAccess: boolean;
-  isLoggingIn: boolean;
-  onGoogleLogin: () => void;
   outliers: OutlierVideo[];
   onOutliersUpdate: (videos: OutlierVideo[]) => void;
+  onAnalyzeVideo: (videoUrlOrId: string) => void;
   onAdaptIdea: (videoTitle: string) => void;
   onToast: (message: string, type?: 'success' | 'info' | 'error') => void;
 }
@@ -39,10 +39,9 @@ function formatCompactNumber(num: number): string {
 
 export const OutliersModule: React.FC<OutliersModuleProps> = ({
   hasYoutubeAccess,
-  isLoggingIn,
-  onGoogleLogin,
   outliers,
   onOutliersUpdate,
+  onAnalyzeVideo,
   onAdaptIdea,
   onToast,
 }) => {
@@ -303,24 +302,22 @@ export const OutliersModule: React.FC<OutliersModuleProps> = ({
                     {formatCompactNumber(video.viewCount)} izlenme
                   </div>
                   <div className="flex items-center gap-2">
-                    {video.url && (
-                      <a
-                        href={video.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-label="YouTube'da aç"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-white/[0.1] bg-[#0B0F19] text-slate-300 hover:text-white"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                      </a>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => onAnalyzeVideo(video.url || video.id)}
+                      title="Videoyu Analiz Et"
+                      className="inline-flex h-8 items-center gap-1 rounded-lg border border-white/[0.1] bg-[#0B0F19] px-2.5 text-xs font-semibold text-slate-200 hover:border-[#38BDF8] hover:text-[#38BDF8] cursor-pointer whitespace-nowrap"
+                    >
+                      <BarChart2 className="h-3.5 w-3.5" />
+                      <span>Analiz</span>
+                    </button>
                     <button
                       type="button"
                       onClick={() => onAdaptIdea(video.title)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#3B82F6] px-3 text-xs font-semibold text-white transition-colors hover:bg-blue-500 cursor-pointer whitespace-nowrap"
+                      className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3 text-xs font-semibold text-white transition-colors hover:bg-blue-500 cursor-pointer whitespace-nowrap"
                     >
                       <Sparkles className="h-3.5 w-3.5" />
-                      <span>Bu Fikri Uyarla</span>
+                      <span>Uyarla</span>
                     </button>
                   </div>
                 </div>
@@ -378,24 +375,32 @@ export const OutliersModule: React.FC<OutliersModuleProps> = ({
                         </td>
                         <td className="px-5 py-4 whitespace-nowrap">
                           <span
-                            className={`inline-flex items-center rounded-md border px-2.5 py-1 font-mono-tabular text-xs font-bold ${
-                              isHighOutlier
-                                ? 'border-[#10B981]/30 bg-[#10B981]/15 text-[#10B981]'
-                                : 'border-[#3B82F6]/30 bg-[#3B82F6]/15 text-[#3B82F6]'
+                            className={`font-mono-tabular text-xs font-bold ${
+                              isHighOutlier ? 'text-[#10B981]' : 'text-[#38BDF8]'
                             }`}
                           >
                             {video.outlierMultiplier.toFixed(1).replace('.0', '')}x daha fazla izlendi
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => onAdaptIdea(video.title)}
-                            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#3B82F6] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-blue-500 cursor-pointer"
-                          >
-                            <Sparkles className="h-3.5 w-3.5" />
-                            <span>Bu Fikri Uyarla</span>
-                          </button>
+                          <div className="inline-flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => onAnalyzeVideo(video.url || video.id)}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/[0.1] bg-[#0B0F19] px-3 text-xs font-semibold text-slate-200 hover:border-[#38BDF8] hover:text-[#38BDF8] cursor-pointer"
+                            >
+                              <BarChart2 className="h-3.5 w-3.5" />
+                              <span>Analiz Et</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onAdaptIdea(video.title)}
+                              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#2563EB] px-3.5 text-xs font-semibold text-white transition-colors hover:bg-blue-500 cursor-pointer"
+                            >
+                              <Sparkles className="h-3.5 w-3.5" />
+                              <span>Uyarla</span>
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );

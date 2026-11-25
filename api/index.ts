@@ -1256,6 +1256,419 @@ Türkçe JSON döndür:
     }
   });
 
+  // YouTube Channel Candidate Search (for instant channel selection after sign-in)
+  app.get('/api/youtube/channel-search', async (req: Request, res: Response) => {
+    const bearerToken = getBearerToken(req);
+    const ytKey = getYoutubeApiKey();
+    const q = String(req.query.q ?? '').trim();
+
+    if (!q) {
+      res.json({ channels: [] });
+      return;
+    }
+    if (!bearerToken && !ytKey) {
+      res.status(401).json({
+        error: 'Kanal araması için YOUTUBE_API_KEY tanımlı olmalıdır.',
+      });
+      return;
+    }
+
+    try {
+      const searchUrl = new URL('https://www.googleapis.com/youtube/v3/search');
+      searchUrl.searchParams.set('part', 'snippet');
+      searchUrl.searchParams.set('q', q);
+      searchUrl.searchParams.set('type', 'channel');
+      searchUrl.searchParams.set('maxResults', '5');
+      const sData = (await fetchYoutubeJson(searchUrl, bearerToken, ytKey)) as {
+        items?: Array<{ id?: { channelId?: string } }>;
+      };
+
+      const channelIds = (sData.items ?? [])
+        .map((item) => item.id?.channelId)
+        .filter((id): id is string => Boolean(id));
+
+      if (channelIds.length === 0) {
+        res.json({ channels: [] });
+        return;
+      }
+
+      const chUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+      chUrl.searchParams.set('part', 'snippet,statistics');
+      chUrl.searchParams.set('id', channelIds.join(','));
+      const chData = (await fetchYoutubeJson(chUrl, bearerToken, ytKey)) as {
+        items?: Array<{
+          id: string;
+          snippet?: {
+            title?: string;
+            customUrl?: string;
+            thumbnails?: { medium?: { url?: string }; default?: { url?: string } };
+          };
+          statistics?: {
+            subscriberCount?: string;
+            videoCount?: string;
+          };
+        }>;
+      };
+
+      const channels = (chData.items ?? []).map((ch) => ({
+        channelId: ch.id,
+        title: ch.snippet?.title ?? 'YouTube Kanalı',
+        customUrl: ch.snippet?.customUrl ?? '',
+        thumbnailUrl:
+          ch.snippet?.thumbnails?.medium?.url || ch.snippet?.thumbnails?.default?.url || '',
+        subscriberCount: Number(ch.statistics?.subscriberCount ?? 0),
+        videoCount: Number(ch.statistics?.videoCount ?? 0),
+      }));
+
+      res.json({ channels });
+    } catch (err) {
+      console.error('YouTube /api/youtube/channel-search error:', err);
+      res.status(502).json({ error: extractErrorMessage(err) });
+    }
+  });
+
+  // vidIQ-style Single Video Inspector (URL or Video ID)
+  app.get('/api/youtube/video-inspect', async (req: Request, res: Response) => {
+    const bearerToken = getBearerToken(req);
+    const ytKey = getYoutubeApiKey();
+    const rawInput = String(req.query.v ?? '').trim();
+
+    if (!rawInput) {
+      res.status(400).json({ error: 'Lütfen analiz edilecek bir YouTube video bağlantısı veya ID girin.' });
+      return;
+    }
+    if (!bearerToken && !ytKey) {
+      res.status(401).json({
+        error: 'Video analizi için sunucuda YOUTUBE_API_KEY tanımlı olmalıdır.',
+      });
+      return;
+    }
+
+    let videoId = '';
+    if (/^[A-Za-z0-9_-]{11}$/.test(rawInput)) {
+      videoId = rawInput;
+    } else {
+      try {
+        const parsed = new URL(rawInput.startsWith('http') ? rawInput : `https://${rawInput}`);
+        if (parsed.hostname.includes('youtu.be')) {
+          videoId = parsed.pathname.replace(/^\/+/, '').split('/')[0] ?? '';
+        } else if (parsed.searchParams.get('v')) {
+          videoId = parsed.searchParams.get('v') ?? '';
+        } else {
+          const pathMatch = /\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{11})/.exec(parsed.pathname);
+          if (pathMatch?.[1]) {
+            videoId = pathMatch[1];
+          }
+        }
+      } catch {
+        const fallbackMatch = /([A-Za-z0-9_-]{11})/.exec(rawInput);
+        videoId = fallbackMatch?.[1] ?? '';
+      }
+    }
+
+    if (!videoId || !/^[A-Za-z0-9_-]{11}$/.test(videoId)) {
+      res.status(400).json({
+        error: 'Geçerli bir YouTube video bağlantısı bulunamadı (örn: youtube.com/watch?v=... veya youtu.be/...).',
+      });
+      return;
+    }
+
+    try {
+      const vUrl = new URL('https://www.googleapis.com/youtube/v3/videos');
+      vUrl.searchParams.set('part', 'snippet,statistics,contentDetails');
+      vUrl.searchParams.set('id', videoId);
+      const vData = (await fetchYoutubeJson(vUrl, bearerToken, ytKey)) as {
+        items?: Array<{
+          id: string;
+          snippet?: {
+            title?: string;
+            description?: string;
+            publishedAt?: string;
+            channelId?: string;
+            channelTitle?: string;
+            tags?: string[];
+            thumbnails?: {
+              maxres?: { url?: string };
+              high?: { url?: string };
+              medium?: { url?: string };
+            };
+          };
+          statistics?: {
+            viewCount?: string;
+            likeCount?: string;
+            commentCount?: string;
+          };
+          contentDetails?: {
+            duration?: string;
+            definition?: string;
+            caption?: string;
+          };
+        }>;
+      };
+
+      const v = vData.items?.[0];
+      if (!v) {
+        res.status(404).json({ error: 'Bu video bulunamadı veya gizli/kaldırılmış olabilir.' });
+        return;
+      }
+
+      const channelId = v.snippet?.channelId ?? '';
+      let channelCustomUrl = '';
+      let channelThumbnailUrl = '';
+      let channelSubscribers = 0;
+
+      if (channelId) {
+        try {
+          const chUrl = new URL('https://www.googleapis.com/youtube/v3/channels');
+          chUrl.searchParams.set('part', 'snippet,statistics');
+          chUrl.searchParams.set('id', channelId);
+          const chData = (await fetchYoutubeJson(chUrl, bearerToken, ytKey)) as {
+            items?: Array<{
+              snippet?: {
+                customUrl?: string;
+                thumbnails?: { default?: { url?: string }; medium?: { url?: string } };
+              };
+              statistics?: { subscriberCount?: string };
+            }>;
+          };
+          const ch = chData.items?.[0];
+          channelCustomUrl = ch?.snippet?.customUrl ?? '';
+          channelThumbnailUrl =
+            ch?.snippet?.thumbnails?.medium?.url || ch?.snippet?.thumbnails?.default?.url || '';
+          channelSubscribers = Number(ch?.statistics?.subscriberCount ?? 0);
+        } catch {
+          // Ignore optional channel lookup error
+        }
+      }
+
+      let topComments: Array<{
+        id: string;
+        author: string;
+        authorPhotoUrl?: string;
+        text: string;
+        likeCount: number;
+        publishedAt: string;
+      }> = [];
+
+      try {
+        const cmUrl = new URL('https://www.googleapis.com/youtube/v3/commentThreads');
+        cmUrl.searchParams.set('part', 'snippet');
+        cmUrl.searchParams.set('videoId', videoId);
+        cmUrl.searchParams.set('order', 'relevance');
+        cmUrl.searchParams.set('maxResults', '12');
+        cmUrl.searchParams.set('textFormat', 'plainText');
+        const cmData = (await fetchYoutubeJson(cmUrl, bearerToken, ytKey)) as {
+          items?: Array<{
+            id: string;
+            snippet?: {
+              topLevelComment?: {
+                snippet?: {
+                  authorDisplayName?: string;
+                  authorProfileImageUrl?: string;
+                  textDisplay?: string;
+                  likeCount?: number;
+                  publishedAt?: string;
+                };
+              };
+            };
+          }>;
+        };
+
+        topComments = (cmData.items ?? [])
+          .map((item) => {
+            const c = item.snippet?.topLevelComment?.snippet;
+            return {
+              id: item.id,
+              author: c?.authorDisplayName ?? 'İzleyici',
+              authorPhotoUrl: c?.authorProfileImageUrl ?? '',
+              text: c?.textDisplay ?? '',
+              likeCount: Number(c?.likeCount ?? 0),
+              publishedAt: c?.publishedAt ?? '',
+            };
+          })
+          .filter((c) => Boolean(c.text));
+      } catch {
+        topComments = [];
+      }
+
+      const title = v.snippet?.title ?? 'Başlıksız Video';
+      const description = v.snippet?.description ?? '';
+      const tags = v.snippet?.tags ?? [];
+      const viewCount = Number(v.statistics?.viewCount ?? 0);
+      const likeCount = Number(v.statistics?.likeCount ?? 0);
+      const commentCount = Number(v.statistics?.commentCount ?? 0);
+      const publishedAt = v.snippet?.publishedAt ?? new Date().toISOString();
+      const hoursSincePublish = Math.max(
+        1,
+        (Date.now() - new Date(publishedAt).getTime()) / (1000 * 60 * 60)
+      );
+      const vph = Math.round(viewCount / hoursSincePublish);
+      const engagementRate =
+        viewCount > 0 ? Number((((likeCount + commentCount) / viewCount) * 100).toFixed(2)) : 0;
+      const outlierMultiplier =
+        channelSubscribers > 0 ? Number((viewCount / channelSubscribers).toFixed(2)) : 1;
+      const definition = (v.contentDetails?.definition ?? 'hd').toUpperCase();
+      const caption = v.contentDetails?.caption === 'true';
+
+      const checklist = [
+        {
+          id: 'title-length',
+          label: 'Başlık uzunluğu (35–70 karakter)',
+          passed: title.length >= 35 && title.length <= 70,
+          detail: `${title.length} karakter`,
+        },
+        {
+          id: 'tags-count',
+          label: 'Video etiketleri (en az 5 etiket)',
+          passed: tags.length >= 5,
+          detail: `${tags.length} etiket tanımlı`,
+        },
+        {
+          id: 'desc-length',
+          label: 'Detaylı açıklama (en az 200 karakter)',
+          passed: description.length >= 200,
+          detail: `${description.length} karakter`,
+        },
+        {
+          id: 'desc-links',
+          label: 'Açıklamada link veya bölüm zaman damgası',
+          passed: /https?:\/\/|\d{1,2}:\d{2}/.test(description),
+          detail: /https?:\/\/|\d{1,2}:\d{2}/.test(description)
+            ? 'Bağlantı / zaman damgası var'
+            : 'Bulunamadı',
+        },
+        {
+          id: 'engagement',
+          label: 'Sağlıklı etkileşim oranı (>= %2)',
+          passed: engagementRate >= 2,
+          detail: `%${engagementRate}`,
+        },
+        {
+          id: 'quality',
+          label: 'Yüksek çözünürlük (HD)',
+          passed: definition === 'HD',
+          detail: definition,
+        },
+      ];
+
+      const passedCount = checklist.filter((c) => c.passed).length;
+      const seoScore = Math.round((passedCount / checklist.length) * 100);
+
+      res.json({
+        id: v.id,
+        title,
+        description,
+        publishedAt,
+        duration: formatIsoDuration(v.contentDetails?.duration ?? ''),
+        durationSeconds: getDurationSeconds(v.contentDetails?.duration ?? ''),
+        thumbnailUrl:
+          v.snippet?.thumbnails?.maxres?.url ||
+          v.snippet?.thumbnails?.high?.url ||
+          v.snippet?.thumbnails?.medium?.url ||
+          '',
+        url: `https://www.youtube.com/watch?v=${encodeURIComponent(v.id)}`,
+        channelId,
+        channelTitle: v.snippet?.channelTitle ?? '',
+        channelCustomUrl,
+        channelThumbnailUrl,
+        channelSubscribers,
+        viewCount,
+        likeCount,
+        commentCount,
+        vph,
+        engagementRate,
+        outlierMultiplier,
+        definition,
+        caption,
+        tags,
+        seoScore,
+        checklist,
+        topComments,
+      });
+    } catch (err) {
+      console.error('YouTube /api/youtube/video-inspect error:', err);
+      res.status(502).json({ error: extractErrorMessage(err) });
+    }
+  });
+
+  // AI Video & Comment Deep Audit
+  app.post('/api/ai/video-audit', async (req: Request, res: Response) => {
+    const ai = getGeminiClient();
+    if (!ai) {
+      res.status(503).json({
+        error: 'GEMINI_API_KEY tanımlı değil. Lütfen sunucu ortam değişkenlerinden Gemini API anahtarını ekleyin.',
+      });
+      return;
+    }
+
+    const video = req.body?.video as {
+      title?: string;
+      description?: string;
+      tags?: string[];
+      viewCount?: number;
+      likeCount?: number;
+      commentCount?: number;
+      vph?: number;
+      engagementRate?: number;
+      outlierMultiplier?: number;
+      channelTitle?: string;
+      channelSubscribers?: number;
+      topComments?: Array<{ text?: string; likeCount?: number }>;
+    };
+
+    if (!video?.title) {
+      res.status(400).json({ error: 'Analiz edilecek video verisi eksik.' });
+      return;
+    }
+
+    try {
+      const commentLines = (video.topComments ?? [])
+        .slice(0, 10)
+        .map((c, i) => `${i + 1}. (${c.likeCount ?? 0} beğeni): ${String(c.text ?? '').slice(0, 220)}`)
+        .join('\n');
+
+      const response = await generateContentWithRetry(ai, {
+        contents: `Sen vidIQ seviyesinde kıdemli bir Türkçe YouTube büyüme ve video analiz uzmanısın. Aşağıdaki gerçek YouTube videosunu ve izleyici yorumlarını derinlemesine analiz et:
+
+Başlık: ${video.title}
+Kanal: ${video.channelTitle ?? ''} (${video.channelSubscribers ?? 0} abone)
+İzlenme: ${video.viewCount ?? 0} | Beğeni: ${video.likeCount ?? 0} | Yorum: ${video.commentCount ?? 0}
+VPH (Saatlik İzlenme): ${video.vph ?? 0} | Etkileşim: %${video.engagementRate ?? 0} | Aboneye Oran: ${video.outlierMultiplier ?? 1}x
+Etiketler (${video.tags?.length ?? 0} adet): ${(video.tags ?? []).slice(0, 15).join(', ') || 'Yok'}
+Açıklama Özeti: ${String(video.description ?? '').slice(0, 500) || 'Yok'}
+En Popüler Gerçek Yorumlar:
+${commentLines || 'Yorum verisi yok veya yorumlar kapalı.'}
+
+Lütfen tamamen bu videonun gerçek verilerine dayanarak Türkçe olarak:
+- summary: Videonun performansını ve algoritmik durumunu özetleyen 2-3 net cümle.
+- strengths: Bu videoda iyi çalışan 3 somut unsur.
+- improvements: CTR, kanca veya SEO'yu iyileştirmek için uygulanabilir 3 somut öneri.
+- audienceSentiment: Gerçek yorumlardan çıkan izleyici beklentisi ve bir sonraki video fikri ipucu (yorum yoksa izleyici etkileşim değerlendirmesi).
+- betterTitles: Bu video için daha yüksek tıklanma getirebilecek 3 alternatif başlık.`,
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              summary: { type: Type.STRING },
+              strengths: { type: Type.ARRAY, items: { type: Type.STRING } },
+              improvements: { type: Type.ARRAY, items: { type: Type.STRING } },
+              audienceSentiment: { type: Type.STRING },
+              betterTitles: { type: Type.ARRAY, items: { type: Type.STRING } },
+            },
+            required: ['summary', 'strengths', 'improvements', 'audienceSentiment', 'betterTitles'],
+          },
+        },
+      });
+
+      const parsed = JSON.parse((response.text ?? '{}').trim());
+      res.json(parsed);
+    } catch (err) {
+      console.error('Gemini /api/ai/video-audit error:', err);
+      res.status(502).json({ error: `Gemini video analizi başarısız: ${extractErrorMessage(err)}` });
+    }
+  });
+
   // Unmatched /api/* routes always return JSON
   app.use('/api', (_req: Request, res: Response) => {
     res.status(404).json({ error: 'API uç noktası bulunamadı.' });

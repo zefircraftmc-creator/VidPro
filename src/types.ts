@@ -1,11 +1,12 @@
 export type ModuleId =
   | 'home'
-  | 'optimize'
-  | 'coach'
-  | 'keywords'
+  | 'video-audit'
   | 'daily-ideas'
+  | 'keywords'
+  | 'optimize'
   | 'outliers'
   | 'competitors'
+  | 'coach'
   | 'thumbnails';
 
 export type PotentialLevel =
@@ -54,6 +55,67 @@ export interface ConnectedChannelData {
     avgViewDurationSec: number;
     dailySeries: AnalyticsDailyPoint[];
   };
+}
+
+export interface ChannelSearchCandidate {
+  channelId: string;
+  title: string;
+  customUrl: string;
+  thumbnailUrl: string;
+  subscriberCount: number;
+  videoCount: number;
+}
+
+export interface VideoChecklistItem {
+  id: string;
+  label: string;
+  passed: boolean;
+  detail: string;
+}
+
+export interface VideoCommentItem {
+  id: string;
+  author: string;
+  authorPhotoUrl?: string;
+  text: string;
+  likeCount: number;
+  publishedAt: string;
+}
+
+export interface VideoInspectionData {
+  id: string;
+  title: string;
+  description: string;
+  publishedAt: string;
+  duration: string;
+  durationSeconds: number;
+  thumbnailUrl: string;
+  url: string;
+  channelId: string;
+  channelTitle: string;
+  channelCustomUrl: string;
+  channelThumbnailUrl: string;
+  channelSubscribers: number;
+  viewCount: number;
+  likeCount: number;
+  commentCount: number;
+  vph: number;
+  engagementRate: number;
+  outlierMultiplier: number;
+  definition: string;
+  caption: boolean;
+  tags: string[];
+  seoScore: number;
+  checklist: VideoChecklistItem[];
+  topComments: VideoCommentItem[];
+}
+
+export interface VideoAiAuditResult {
+  summary: string;
+  strengths: string[];
+  improvements: string[];
+  audienceSentiment: string;
+  betterTitles: string[];
 }
 
 export interface ViralIdea {

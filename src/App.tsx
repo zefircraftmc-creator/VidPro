@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Menu, Bookmark, LogOut } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { HomeDashboardModule } from './components/HomeDashboardModule';
+import { VideoAnalyzerModule } from './components/VideoAnalyzerModule';
 import { OptimizeModule } from './components/OptimizeModule';
 import { AiCoachModule } from './components/AiCoachModule';
 import { KeywordInspectorModule } from './components/KeywordInspectorModule';
@@ -38,6 +39,7 @@ const BOUND_CHANNEL_KEY_PREFIX = 'ygs_bound_channel_v1_';
 
 const MODULE_BREADCRUMBS: Record<ModuleId, string> = {
   home: 'Ana Sayfa · Kanal Özeti',
+  'video-audit': 'Video Analizi · SEO & Yorum Denetimi',
   'daily-ideas': 'Günlük Fikirler · Viral Trendler',
   keywords: 'Anahtar Kelimeler · Hacim ve Rekabet',
   optimize: 'Optimize Et · SEO Skoru & İçerik',
@@ -84,6 +86,8 @@ export default function App() {
   const [contentTopic, setContentTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState<GeneratedContentResult | null>(null);
   const [autoTriggerContentKey, setAutoTriggerContentKey] = useState(0);
+  const [videoAuditInput, setVideoAuditInput] = useState('');
+  const [autoTriggerVideoAuditKey, setAutoTriggerVideoAuditKey] = useState(0);
   const [outliers, setOutliers] = useState<OutlierVideo[]>([]);
 
   const [competitors, setCompetitors] = useState<CompetitorChannel[]>(() => {
@@ -322,6 +326,12 @@ export default function App() {
     setAutoTriggerContentKey((k) => k + 1);
   };
 
+  const handleRouteToVideoAudit = (videoUrlOrId: string) => {
+    setVideoAuditInput(videoUrlOrId);
+    setActiveModule('video-audit');
+    setAutoTriggerVideoAuditKey((k) => k + 1);
+  };
+
   const hasYoutubeAccess = apiStatus.youtubeReady;
 
   if (legalPage) {
@@ -379,9 +389,17 @@ export default function App() {
                 e.preventDefault();
                 const q = headerSearch.trim();
                 if (!q) return;
-                setKeywordQuery(q);
-                setAutoTriggerKeywordKey((k) => k + 1);
-                setActiveModule('keywords');
+                if (
+                  q.includes('youtube.com/watch') ||
+                  q.includes('youtu.be/') ||
+                  q.includes('youtube.com/shorts/')
+                ) {
+                  handleRouteToVideoAudit(q);
+                } else {
+                  setKeywordQuery(q);
+                  setAutoTriggerKeywordKey((k) => k + 1);
+                  setActiveModule('keywords');
+                }
                 setHeaderSearch('');
               }}
               className="hidden md:flex items-center"
@@ -390,8 +408,8 @@ export default function App() {
                 type="text"
                 value={headerSearch}
                 onChange={(e) => setHeaderSearch(e.target.value)}
-                placeholder="Anahtar kelime veya konu ara..."
-                className="h-9 w-56 rounded-lg border border-white/[0.08] bg-[#161B26] px-3 text-xs text-white placeholder-slate-500 focus:border-[#3B82F6] focus:outline-none lg:w-64"
+                placeholder="Video linki veya anahtar kelime ara..."
+                className="h-9 w-56 rounded-lg border border-white/[0.08] bg-[#131722] px-3 text-xs text-white placeholder-slate-500 focus:border-[#2563EB] focus:outline-none lg:w-64"
               />
             </form>
 
@@ -475,8 +493,20 @@ export default function App() {
               onRefreshChannel={handleRefreshChannel}
               onDisconnectChannel={handleSwitchChannel}
               onNavigate={setActiveModule}
+              onAnalyzeVideo={handleRouteToVideoAudit}
               onOptimizeVideo={handleRouteToOptimize}
               onOpenLegal={(page) => navigateLegal(page)}
+            />
+          )}
+
+          {activeModule === 'video-audit' && (
+            <VideoAnalyzerModule
+              initialVideoInput={videoAuditInput}
+              autoTriggerKey={autoTriggerVideoAuditKey}
+              recentChannelVideos={channel?.recentVideos ?? []}
+              onRouteToOptimize={handleRouteToOptimize}
+              onCopy={copyToClipboard}
+              onToast={showToast}
             />
           )}
 
@@ -523,10 +553,9 @@ export default function App() {
           {activeModule === 'outliers' && (
             <OutliersModule
               hasYoutubeAccess={hasYoutubeAccess}
-              isLoggingIn={isLoggingIn}
-              onGoogleLogin={handleGoogleLogin}
               outliers={outliers}
               onOutliersUpdate={setOutliers}
+              onAnalyzeVideo={handleRouteToVideoAudit}
               onAdaptIdea={handleRouteToOptimize}
               onToast={showToast}
             />
