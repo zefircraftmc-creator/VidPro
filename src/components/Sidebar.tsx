@@ -33,7 +33,7 @@ const NAV_ITEMS: Array<{
   label: string;
   icon: React.FC<{ className?: string }>;
 }> = [
-  { id: 'home', label: 'Ana Sayfa & Kanal', icon: Home },
+  { id: 'home', label: 'Ana Sayfa', icon: Home },
   { id: 'daily-ideas', label: 'Günlük Fikirler', icon: Flame },
   { id: 'keywords', label: 'Anahtar Kelimeler', icon: KeyRound },
   { id: 'optimize', label: 'Optimize Et', icon: Sliders },
@@ -56,9 +56,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onCloseMobile,
 }) => {
   const sidebarContent = (
-    <div className="flex h-full flex-col justify-between bg-[#11141D] border-r border-white/[0.08]">
+    <div className="flex h-full flex-col justify-between bg-[#0F131C] border-r border-white/[0.08]">
       <div className="flex-1 overflow-y-auto">
-        {/* Brand Header */}
+        {/* VidPro Brand Header */}
         <div className="flex h-16 items-center justify-between border-b border-white/[0.08] px-5">
           <button
             type="button"
@@ -66,9 +66,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onSelectModule('home');
               onCloseMobile();
             }}
-            className="font-display text-base font-extrabold tracking-tight text-white whitespace-nowrap cursor-pointer"
+            className="flex items-center gap-2.5 cursor-pointer"
           >
-            YouTube Growth Studio
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-[#2563EB] to-[#06B6D4] shadow-sm shadow-blue-500/20">
+              <svg viewBox="0 0 24 24" className="h-4 w-4 fill-white" aria-hidden="true">
+                <path d="M5 4.5v15l14-7.5-14-7.5z" />
+              </svg>
+            </span>
+            <span className="font-display text-lg font-extrabold tracking-tight text-white">
+              Vid<span className="text-[#38BDF8]">Pro</span>
+            </span>
           </button>
           <button
             type="button"
@@ -92,13 +99,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   onSelectModule(item.id);
                   onCloseMobile();
                 }}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition-colors cursor-pointer ${
+                className={`relative flex w-full items-center gap-3 rounded-lg px-3.5 py-2.5 text-left text-[13.5px] transition-colors cursor-pointer ${
                   active
-                    ? 'bg-[#3B82F6] text-white font-semibold'
-                    : 'text-slate-300 hover:bg-white/[0.05] hover:text-white'
+                    ? 'bg-[#2563EB]/15 text-white font-semibold'
+                    : 'text-slate-400 font-medium hover:bg-white/[0.04] hover:text-slate-100'
                 }`}
               >
-                <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-white' : 'text-slate-400'}`} />
+                {active && (
+                  <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r bg-[#38BDF8]" />
+                )}
+                <Icon
+                  className={`h-4 w-4 shrink-0 ${
+                    active ? 'text-[#38BDF8]' : 'text-slate-400'
+                  }`}
+                />
                 <span className="truncate">{item.label}</span>
               </button>
             );
@@ -106,7 +120,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Bottom Account & Saved Ideas */}
+      {/* Bottom Saved & Channel Account */}
       <div className="border-t border-white/[0.08] p-3 space-y-2.5">
         <button
           type="button"
@@ -114,17 +128,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
             onOpenSaved();
             onCloseMobile();
           }}
-          className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#0B0F19] px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white cursor-pointer"
+          className="flex w-full items-center justify-between rounded-lg border border-white/[0.08] bg-[#161B26] px-3 py-2 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white cursor-pointer"
         >
           <span className="flex items-center gap-2">
-            <Bookmark className="h-3.5 w-3.5 text-[#3B82F6]" />
+            <Bookmark className="h-3.5 w-3.5 text-[#38BDF8]" />
             <span>Kaydedilen Fikirler</span>
           </span>
           <span className="font-mono-tabular text-slate-400">{savedCount}</span>
         </button>
 
         {channel ? (
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#0B0F19] p-2.5">
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.08] bg-[#161B26] p-2.5">
             <div className="flex items-center gap-2.5 min-w-0">
               {channel.thumbnailUrl && (
                 <img
@@ -169,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   return (
     <>
-      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[256px]">
+      <aside className="hidden lg:fixed lg:inset-y-0 lg:left-0 lg:z-30 lg:block lg:w-[244px]">
         {sidebarContent}
       </aside>
 
@@ -179,7 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="fixed inset-0 bg-black/70 backdrop-blur-xs"
             onClick={onCloseMobile}
           />
-          <aside className="relative z-10 w-[264px] max-w-[85vw]">
+          <aside className="relative z-10 w-[256px] max-w-[85vw]">
             {sidebarContent}
           </aside>
         </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, Copy, ArrowRight, AlertCircle, TrendingUp } from 'lucide-react';
 import { CircularGauge } from './CircularGauge';
 import { apiFetch } from '../lib/api';
@@ -7,6 +7,8 @@ import type { KeywordAnalysisResult } from '../types';
 interface KeywordInspectorModuleProps {
   analysis: KeywordAnalysisResult | null;
   onAnalysisUpdate: (result: KeywordAnalysisResult) => void;
+  initialQuery?: string;
+  autoTriggerKey?: number;
   onCreateContentFromKeyword: (keyword: string) => void;
   onCopy: (text: string, label?: string) => void;
   onToast: (message: string, type?: 'success' | 'info' | 'error') => void;
@@ -34,11 +36,13 @@ function getCompetitionColor(score: number): string {
 export const KeywordInspectorModule: React.FC<KeywordInspectorModuleProps> = ({
   analysis,
   onAnalysisUpdate,
+  initialQuery = '',
+  autoTriggerKey = 0,
   onCreateContentFromKeyword,
   onCopy,
   onToast,
 }) => {
-  const [query, setQuery] = useState(analysis?.query || '');
+  const [query, setQuery] = useState(initialQuery || analysis?.query || '');
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -67,6 +71,14 @@ export const KeywordInspectorModule: React.FC<KeywordInspectorModuleProps> = ({
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (autoTriggerKey > 0 && initialQuery.trim()) {
+      setQuery(initialQuery);
+      runAnalysis(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoTriggerKey]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();

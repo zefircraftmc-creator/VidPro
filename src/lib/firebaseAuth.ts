@@ -13,7 +13,29 @@ export const YOUTUBE_SCOPES = [
   'https://www.googleapis.com/auth/yt-analytics.readonly',
 ];
 
-const app = initializeApp(firebaseConfig);
+const resolvedFirebaseConfig = {
+  ...firebaseConfig,
+  ...(import.meta.env.VITE_FIREBASE_API_KEY
+    ? { apiKey: import.meta.env.VITE_FIREBASE_API_KEY }
+    : {}),
+  ...(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN
+    ? { authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN }
+    : {}),
+  ...(import.meta.env.VITE_FIREBASE_PROJECT_ID
+    ? { projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID }
+    : {}),
+  ...(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET
+    ? { storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET }
+    : {}),
+  ...(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID
+    ? { messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID }
+    : {}),
+  ...(import.meta.env.VITE_FIREBASE_APP_ID
+    ? { appId: import.meta.env.VITE_FIREBASE_APP_ID }
+    : {}),
+};
+
+const app = initializeApp(resolvedFirebaseConfig);
 const auth = getAuth(app);
 
 const provider = new GoogleAuthProvider();

@@ -49,6 +49,7 @@ export default function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [savedDrawerOpen, setSavedDrawerOpen] = useState(false);
+  const [headerSearch, setHeaderSearch] = useState('');
 
   const [apiStatus, setApiStatus] = useState<ApiStatusResponse>({
     geminiReady: false,
@@ -66,6 +67,8 @@ export default function App() {
   const [niche, setNiche] = useState('');
   const [ideas, setIdeas] = useState<ViralIdea[]>([]);
   const [keywordAnalysis, setKeywordAnalysis] = useState<KeywordAnalysisResult | null>(null);
+  const [keywordQuery, setKeywordQuery] = useState('');
+  const [autoTriggerKeywordKey, setAutoTriggerKeywordKey] = useState(0);
   const [contentTopic, setContentTopic] = useState('');
   const [generatedContent, setGeneratedContent] = useState<GeneratedContentResult | null>(null);
   const [autoTriggerContentKey, setAutoTriggerContentKey] = useState(0);
@@ -279,7 +282,7 @@ export default function App() {
   const hasYoutubeAccess = hasToken || apiStatus.youtubeReady;
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-slate-100">
+    <div className="min-h-screen bg-[#0B0E14] text-slate-100">
       <Sidebar
         activeModule={activeModule}
         onSelectModule={setActiveModule}
@@ -293,21 +296,21 @@ export default function App() {
         onCloseMobile={() => setMobileMenuOpen(false)}
       />
 
-      <div className="lg:pl-[256px]">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#0B0F19]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
+      <div className="lg:pl-[244px]">
+        <header className="sticky top-0 z-20 flex h-16 items-center justify-between gap-4 border-b border-white/[0.08] bg-[#0B0E14]/90 px-4 backdrop-blur-md sm:px-6 lg:px-8">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
               aria-label="Navigasyon menüsünü aç"
-              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-[#161922] text-slate-300 hover:text-white lg:hidden shrink-0 cursor-pointer"
+              className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-white/[0.08] bg-[#161B26] text-slate-300 hover:text-white lg:hidden shrink-0 cursor-pointer"
             >
               <Menu className="h-5 w-5" />
             </button>
 
             <div className="min-w-0">
               <p className="truncate text-xs font-medium text-slate-400">
-                {channel ? channel.title : 'YouTube Growth Studio'}
+                {channel ? channel.title : 'VidPro'}
               </p>
               <h1 className="truncate font-display text-sm font-bold text-white sm:text-base">
                 {MODULE_BREADCRUMBS[activeModule]}
@@ -316,12 +319,33 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2.5 shrink-0">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const q = headerSearch.trim();
+                if (!q) return;
+                setKeywordQuery(q);
+                setAutoTriggerKeywordKey((k) => k + 1);
+                setActiveModule('keywords');
+                setHeaderSearch('');
+              }}
+              className="hidden md:flex items-center"
+            >
+              <input
+                type="text"
+                value={headerSearch}
+                onChange={(e) => setHeaderSearch(e.target.value)}
+                placeholder="Anahtar kelime veya konu ara..."
+                className="h-9 w-56 rounded-lg border border-white/[0.08] bg-[#161B26] px-3 text-xs text-white placeholder-slate-500 focus:border-[#3B82F6] focus:outline-none lg:w-64"
+              />
+            </form>
+
             <button
               type="button"
               onClick={() => setSavedDrawerOpen(true)}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/[0.08] bg-[#161922] px-3 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white whitespace-nowrap shrink-0 cursor-pointer"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-white/[0.08] bg-[#161B26] px-3 text-xs font-semibold text-slate-200 transition-colors hover:border-white/20 hover:text-white whitespace-nowrap shrink-0 cursor-pointer"
             >
-              <Bookmark className="h-3.5 w-3.5 text-[#3B82F6]" />
+              <Bookmark className="h-3.5 w-3.5 text-[#38BDF8]" />
               <span className="hidden sm:inline">Kaydedilenler</span>
               <span className="font-mono-tabular text-slate-400">({savedIdeas.length})</span>
             </button>
@@ -395,6 +419,8 @@ export default function App() {
             <KeywordInspectorModule
               analysis={keywordAnalysis}
               onAnalysisUpdate={setKeywordAnalysis}
+              initialQuery={keywordQuery}
+              autoTriggerKey={autoTriggerKeywordKey}
               onCreateContentFromKeyword={handleRouteToOptimize}
               onCopy={copyToClipboard}
               onToast={showToast}

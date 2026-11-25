@@ -29,8 +29,8 @@ export const AiCoachModule: React.FC<AiCoachModuleProps> = ({
       role: 'assistant',
       timestamp: 'Şimdi',
       content: channel
-        ? `Merhaba ${channel.title}! Gerçek kanal verilerinizi (${channel.subscriberCount.toLocaleString('tr-TR')} abone, ${channel.viewCount.toLocaleString('tr-TR')} toplam izlenme) incelemeye hazırım. Kanalınızı büyütmek için ne üzerinde çalışalım?`
-        : `Merhaba! Ben YouTube Growth AI Koçunuz. Google hesabınızla kanalınızı bağlayabilir veya doğrudan nişiniz hakkında soru sorarak büyüme stratejisi alabilirsiniz.`,
+        ? `Merhaba ${channel.title}! Kanal verilerinizi (${channel.subscriberCount.toLocaleString('tr-TR')} abone, ${channel.viewCount.toLocaleString('tr-TR')} toplam izlenme) incelemeye hazırım. Kanalınızı büyütmek için ne üzerinde çalışalım?`
+        : `Merhaba! Ben VidPro AI Koçunuz. Google hesabınızla kanalınızı bağlayabilir veya nişiniz hakkında soru sorarak büyüme stratejisi alabilirsiniz.`,
     },
   ]);
   const [input, setInput] = useState('');
