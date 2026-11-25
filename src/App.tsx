@@ -12,6 +12,7 @@ import { ThumbnailsModule } from './components/ThumbnailsModule';
 import { GoogleSignInButton } from './components/GoogleSignInButton';
 import { SavedIdeasDrawer } from './components/SavedIdeasDrawer';
 import { ToastContainer } from './components/Toast';
+import { LegalPages } from './components/LegalPages';
 import {
   getAccessToken,
   googleSignIn,
@@ -45,7 +46,16 @@ const MODULE_BREADCRUMBS: Record<ModuleId, string> = {
   thumbnails: 'Thumbnail Önizleme · CTR Analizi',
 };
 
+const getInitialLegalPage = (): 'privacy' | 'terms' | null => {
+  if (typeof window === 'undefined') return null;
+  const path = window.location.pathname.replace(/\/+$/, '');
+  if (path === '/privacy') return 'privacy';
+  if (path === '/terms') return 'terms';
+  return null;
+};
+
 export default function App() {
+  const [legalPage, setLegalPage] = useState<'privacy' | 'terms' | null>(getInitialLegalPage);
   const [activeModule, setActiveModule] = useState<ModuleId>('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [savedDrawerOpen, setSavedDrawerOpen] = useState(false);
@@ -190,6 +200,23 @@ export default function App() {
     return () => unsub();
   }, [fetchMyChannel]);
 
+  useEffect(() => {
+    const onPopState = () => {
+      setLegalPage(getInitialLegalPage());
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  const navigateLegal = useCallback((page: 'privacy' | 'terms' | null) => {
+    const targetPath = page === 'privacy' ? '/privacy' : page === 'terms' ? '/terms' : '/';
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState({}, '', targetPath);
+    }
+    setLegalPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, []);
+
   const handleGoogleLogin = async () => {
     setIsLoggingIn(true);
     setChannelError(null);
@@ -281,6 +308,16 @@ export default function App() {
 
   const hasYoutubeAccess = hasToken || apiStatus.youtubeReady;
 
+  if (legalPage) {
+    return (
+      <LegalPages
+        page={legalPage}
+        onBack={() => navigateLegal(null)}
+        onSwitchPage={(p) => navigateLegal(p)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0B0E14] text-slate-100">
       <Sidebar
@@ -294,6 +331,7 @@ export default function App() {
         onLogout={handleLogout}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        onOpenLegal={(page) => navigateLegal(page)}
       />
 
       <div className="lg:pl-[244px]">
@@ -397,6 +435,7 @@ export default function App() {
               onDisconnectChannel={handleLogout}
               onNavigate={setActiveModule}
               onOptimizeVideo={handleRouteToOptimize}
+              onOpenLegal={(page) => navigateLegal(page)}
             />
           )}
 

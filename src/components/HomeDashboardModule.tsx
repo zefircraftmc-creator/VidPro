@@ -25,6 +25,7 @@ interface HomeDashboardModuleProps {
   onDisconnectChannel: () => void;
   onNavigate: (module: ModuleId) => void;
   onOptimizeVideo: (title: string) => void;
+  onOpenLegal: (page: 'privacy' | 'terms') => void;
 }
 
 export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
@@ -38,6 +39,7 @@ export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
   onDisconnectChannel,
   onNavigate,
   onOptimizeVideo,
+  onOpenLegal,
 }) => {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [channelQuery, setChannelQuery] = useState('');
@@ -150,6 +152,32 @@ export const HomeDashboardModule: React.FC<HomeDashboardModuleProps> = ({
             </button>
           ))}
         </section>
+
+        <footer className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.06] pt-4 text-xs text-slate-500">
+          <span>VidPro · YouTube Kanal Büyütme Platformu</span>
+          <div className="flex items-center gap-4">
+            <a
+              href="/privacy"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenLegal('privacy');
+              }}
+              className="hover:text-slate-300 transition-colors"
+            >
+              Gizlilik Politikası
+            </a>
+            <a
+              href="/terms"
+              onClick={(e) => {
+                e.preventDefault();
+                onOpenLegal('terms');
+              }}
+              className="hover:text-slate-300 transition-colors"
+            >
+              Hizmet Şartları
+            </a>
+          </div>
+        </footer>
       </div>
     );
   }

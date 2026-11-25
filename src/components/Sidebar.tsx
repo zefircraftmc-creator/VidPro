@@ -26,6 +26,7 @@ interface SidebarProps {
   onLogout: () => void;
   mobileOpen: boolean;
   onCloseMobile: () => void;
+  onOpenLegal: (page: 'privacy' | 'terms') => void;
 }
 
 const NAV_ITEMS: Array<{
@@ -54,6 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onLogout,
   mobileOpen,
   onCloseMobile,
+  onOpenLegal,
 }) => {
   const sidebarContent = (
     <div className="flex h-full flex-col justify-between bg-[#0F131C] border-r border-white/[0.08]">
@@ -177,6 +179,32 @@ export const Sidebar: React.FC<SidebarProps> = ({
             />
           </div>
         )}
+
+        <div className="flex items-center justify-center gap-3 pt-1 text-[11px] text-slate-500">
+          <a
+            href="/privacy"
+            onClick={(e) => {
+              e.preventDefault();
+              onOpenLegal('privacy');
+              onCloseMobile();
+            }}
+            className="hover:text-slate-300 transition-colors"
+          >
+            Gizlilik Politikası
+          </a>
+          <span>·</span>
+          <a
+            href="/terms"
+            onClick={(e) => {
+              e.preventDefault();
+              onOpenLegal('terms');
+              onCloseMobile();
+            }}
+            className="hover:text-slate-300 transition-colors"
+          >
+            Hizmet Şartları
+          </a>
+        </div>
       </div>
     </div>
   );
