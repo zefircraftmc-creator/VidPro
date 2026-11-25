@@ -1,0 +1,6 @@
+{
+  "name": "YouTube Growth Studio",
+  "description": "VidIQ ve TubeBuddy tarzı, yapay zeka destekli YouTube içerik, anahtar kelime, SEO ve viral outlier analiz paneli.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
